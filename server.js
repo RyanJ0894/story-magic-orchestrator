@@ -13,7 +13,7 @@ app.use(express.json({ limit: '50mb' }));
 
 // Health check endpoint
 app.get('/health', (req, res) => {
-  res.json({ 
+  res.json({
     status: 'ok',
     timestamp: new Date().toISOString(),
     service: 'story-magic-orchestrator'
@@ -24,10 +24,10 @@ app.get('/health', (req, res) => {
 app.post('/orchestrate', async (req, res) => {
   try {
     const directorJSON = req.body;
-    
+
     // Validate required fields
     if (!directorJSON || !directorJSON.project_id || !directorJSON.scenes) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         error: 'Invalid Director JSON',
         message: 'Missing project_id or scenes'
       });
@@ -44,24 +44,24 @@ app.post('/orchestrate', async (req, res) => {
 
   } catch (error) {
     console.error('Error in /orchestrate:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       error: 'Internal server error',
-      message: error.message 
+      message: error.message
     });
   }
 });
 
 // 404 handler
 app.use((req, res) => {
-  res.status(404).json({ 
+  res.status(404).json({
     error: 'Not found',
-    path: req.path 
+    path: req.path
   });
 });
 
-// Start server
+// Start server - FIXED: hostname comes BEFORE callback
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Story Magic Orchestrator running on port ${PORT}`);
-  console.log(`📍 Health check: http://localhost:${PORT}/health`);
-  console.log(`🎬 Orchestrate endpoint: http://localhost:${PORT}/orchestrate`);
+  console.log(`📍 Health check: http://0.0.0.0:${PORT}/health`);
+  console.log(`📍 Orchestrate endpoint: http://0.0.0.0:${PORT}/orchestrate`);
 });
