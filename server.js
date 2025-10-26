@@ -35,13 +35,28 @@ app.post('/orchestrate', async (req, res) => {
 
     // TODO: Call orchestrator worker here
     // For now, return a simple response
-    res.json({
-      status: 'received',
-      project_id: directorJSON.project_id,
-      scene_count: directorJSON.scenes.length,
-      message: 'Orchestration pipeline will be implemented'
-    });
+    // Import orchestrator at the top of the file
+const { orchestrate } = require('./workers/orchestrator');
 
+// Then in the /orchestrate endpoint, replace the placeholder with:
+try {
+  console.log('🎬 Starting orchestration for project:', directorJSON.project_id);
+  const result = await orchestrate(directorJSON);
+  
+  res.json({
+    status: 'success',
+    project_id: directorJSON.project_id,
+    audio_urls: result.audio_urls,
+    playback_manifest: result.manifest
+  });
+} catch (error) {
+  console.error('❌ Orchestration failed:', error);
+  res.status(500).json({
+    status: 'error',
+    message: error.message,
+    project_id: directorJSON.project_id
+  });
+}
   } catch (error) {
     console.error('Error in /orchestrate:', error);
     res.status(500).json({
