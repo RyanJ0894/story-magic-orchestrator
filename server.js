@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import { orchestrate } from './workers/orchestrator.js';
 
 dotenv.config();
 
@@ -36,7 +37,6 @@ app.post('/orchestrate', async (req, res) => {
     // TODO: Call orchestrator worker here
     // For now, return a simple response
     // Import orchestrator at the top of the file
-const { orchestrate } = require('./workers/orchestrator');
 
 // Then in the /orchestrate endpoint, replace the placeholder with:
 try {
