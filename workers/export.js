@@ -113,46 +113,40 @@ export async function makePlaybackManifest(
   scenePaths,
   crossfadeDuration = 1.5
 ) {
-  console.log('\n📋 Generating playback manifest...');
-  console.log(`   Project: ${project_id}`);
-  console.log(`   Scenes: ${scenePaths.length}`);
+  const { createClient } = await import('@supabase/supabase-js');
+  const supabase = createClient(
+    process.env.SUPABASE_URL,
+    process.env.SUPABASE_ANON_KEY
+  );
 
-  const order = [];
-  let offset = 0;
-
-  for (let i = 0; i < scenePaths.length; i++) {
-    const scene = scenePaths[i];
-    
-    if (!fs.existsSync(scene.path)) {
-      throw new Error(`Scene file not found: ${scene.path}`);
-    }
-
-    const duration = await audioDurationSec(scene.path);
-    
-    order.push({
-      scene_id: scene.scene_id,
-      offset: parseFloat(offset.toFixed(3)),
-      duration: parseFloat(duration.toFixed(3))
+  // Upload episode file to Supabase Storage
+  const episodePath = path.join(process.cwd(), 'output', project_id, 'episode.m4a');
+  const episodeBuffer = fs.readFileSync(episodePath);
+  
+  const { data: uploadData, error: uploadError } = await supabase.storage
+    .from('audio-files')
+    .upload(`${project_id}/episode.m4a`, episodeBuffer, {
+      contentType: 'audio/mp4',
+      upsert: true
     });
 
-    console.log(`   Scene ${i + 1}: ${scene.scene_id} @ ${offset.toFixed(2)}s (${duration.toFixed(2)}s)`);
-
-    // Each crossfade overlaps by fadeDuration, so subtract from next offset
-    if (i < scenePaths.length - 1) {
-      offset += duration - crossfadeDuration;
-    } else {
-      offset += duration;
-    }
+  if (uploadError) {
+    console.error('Supabase upload error:', uploadError);
+    throw uploadError;
   }
+
+  // Get public URL
+  const { data: urlData } = supabase.storage
+    .from('audio-files')
+    .getPublicUrl(`${project_id}/episode.m4a`);
 
   const manifest = {
     project_id,
-    order,
-    total: parseFloat(offset.toFixed(3)),
-    crossfade_duration: crossfadeDuration
+    audio_url: urlData.publicUrl,
+    total_duration: await audioDurationSec(episodePath),
+    created_at: new Date().toISOString()
   };
 
-  console.log(`   ✅ Total duration: ${offset.toFixed(2)}s (${(offset / 60).toFixed(2)} minutes)\n`);
-
+  console.log('🔗 Public audio URL:', urlData.publicUrl);
   return manifest;
 }
