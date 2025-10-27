@@ -124,7 +124,7 @@ export async function makePlaybackManifest(
   const episodeBuffer = fs.readFileSync(episodePath);
   
   const { data: uploadData, error: uploadError } = await supabase.storage
-    .from('audio-files')
+    .from('audio')
     .upload(`${project_id}/episode.m4a`, episodeBuffer, {
       contentType: 'audio/mp4',
       upsert: true
@@ -137,7 +137,7 @@ export async function makePlaybackManifest(
 
   // Get public URL
   const { data: urlData } = supabase.storage
-    .from('audio-files')
+    .from('audio')
     .getPublicUrl(`${project_id}/episode.m4a`);
 
   const manifest = {
