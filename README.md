@@ -9,7 +9,7 @@ Audio production pipeline for Story Magic - converts Director JSON into professi
 - Intelligent music/ambience selection
 - Adaptive audio mixing with ducking
 - EBU R128 loudness normalization (-16 LUFS)
- 
+
 ## Environment Variables
 ```
 ELEVENLABS_API_KEY=your_key_here
