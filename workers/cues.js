@@ -3,26 +3,27 @@ export async function pickCues(scene, catalog) {
   const ambience = [];
   const sfx = [];
 
+  // Use music tracks from Director JSON (array)
   if (scene.music && scene.music.length > 0) {
     for (const musicCue of scene.music) {
       music.push({
-        cue_id: musicCue.track_id || musicCue.cue_id
+        cue_id: musicCue.cue_id || musicCue.track_id
       });
     }
   }
 
-  if (scene.ambience && scene.ambience.length > 0) {
-    for (const ambienceCue of scene.ambience) {
-      ambience.push({
-        cue_id: ambienceCue.track_id || ambienceCue.cue_id
-      });
-    }
+  // Use ambience from Director JSON (object, not array)
+  if (scene.ambience && scene.ambience.cue_id) {
+    ambience.push({
+      cue_id: scene.ambience.cue_id || scene.ambience.track_id
+    });
   }
 
+  // Use SFX from Director JSON (array)
   if (scene.sfx && scene.sfx.length > 0) {
     for (const sfxCue of scene.sfx) {
       sfx.push({
-        cue_id: sfxCue.track_id || sfxCue.cue_id,
+        cue_id: sfxCue.cue_id || sfxCue.track_id,
         at: sfxCue.at || 0
       });
     }
