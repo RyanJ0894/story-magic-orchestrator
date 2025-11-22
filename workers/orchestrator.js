@@ -42,7 +42,7 @@ export async function orchestrate(directorJSON) {
     console.log(`   ✅ Music cues: ${cues.music ? cues.music.length : 0}`);
     console.log(`   ✅ Ambience cues: ${cues.ambience ? cues.ambience.length : 0}\n`);
     console.log('📅 Step 4: Building scene timeline...');
-    const timeline = buildTimeline(scene, alignment, cues);
+    const timeline = await buildTimeline(scene, alignment, cues);
     console.log(`   ✅ Timeline built with ${timeline.events ? timeline.events.length : 0} events\n`);
     console.log('🎵 Step 5: Mixing scene audio with background tracks...');
     const sceneOutput = path.join(projectDir, `scene-${scene.scene_id}.m4a`);

@@ -24,12 +24,12 @@ export async function ttsForScene(project_id, scene) {
         text_preview: line.text.substring(0, 50),
         has_voice_field: !!line.voice,
         voice_value: line.voice || 'MISSING',
-        has_voice_id_field: !!line.voice_id,
-        voice_id_value: line.voice_id || 'MISSING'
+        has_voice_id_field: !!line.voice_key,
+        voice_id_value: line.voice_key || 'MISSING'
       });
 
-      const voice = line.voice
-        ? { voice_id: line.voice, params_json: '{}' }
+      const voice = line.voice_key
+        ? { voice_id: line.voice_key, params_json: {} }
         : (await getVoiceForCharacter(project_id, line.character)
            || await upsertVoiceMap(project_id, line.character));
 

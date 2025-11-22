@@ -15,9 +15,8 @@ const sb = process.env.SUPABASE_URL && process.env.SUPABASE_ANON_KEY
  * @param {Object} cueChoices - Selected music and ambience cues
  * @returns {Object} Timeline with events
  */
-export function buildTimeline(scene, alignment, cueChoices) {
+export async function buildTimeline(scene, alignment, cueChoices) {
   const events = [];
-  
   // Add dialogue events
   for (const line of alignment.lines) {
     events.push({
@@ -39,41 +38,44 @@ export function buildTimeline(scene, alignment, cueChoices) {
     
     events.push({
       type: 'ambience_in',
-      cue_id: cue.cue_id,
+      cue_id: cue.track_id,
       at: 0,
-      fade: 1.5,
-      gain_db: -18
+      fade: cue.fade_in || 1.5,
+      gain_db: cue.volume || -18
     });
     
     const end = alignment.lines.at(-1)?.end ?? 60;
     events.push({
       type: 'ambience_out',
-      cue_id: cue.cue_id,
+      cue_id: cue.track_id,
       at: Math.max(0, end - 1.5),
-      fade: 1.5
+      fade: cue.fade_out || 1.5
     });
   }
   
   // Add music events
   if (cueChoices.music?.[0]) {
     const cue = cueChoices.music[0];
-    const first = alignment.lines[0]?.end ?? 2;
+    const first = alignment.lines[0]?.start ?? 2;
+    const last_index = alignment.lines ? alignment.lines.length -1 : 0;
+    const last = alignment.lines[last_index]?.end ?? 2;
+
     
     events.push({
       type: 'music_in',
-      cue_id: cue.cue_id,
+      cue_id: cue.track_id,
       at: Math.max(0, first + 2),
-      fade: 1,
-      gain_db: -12,
+      fade: cue.fade_in || 1.5,
+      gain_db: volume || -12,
       duck_db: 7  // Ducking amount during dialogue
     });
     
     const end = alignment.lines.at(-1)?.end ?? 60;
     events.push({
       type: 'music_out',
-      cue_id: cue.cue_id,
-      at: Math.max(0, end - 2),
-      fade: 2
+      cue_id: cue.track_id,
+      at: Math.max(0, last +2),
+      fade: cue.fade_out || 1.5
     });
   }
   
@@ -82,9 +84,9 @@ export function buildTimeline(scene, alignment, cueChoices) {
     for (const sfx of scene.sfx) {
       events.push({
         type: 'sfx_at',
-        cue_id: sfx.cue_id,
+        cue_id: sfx.track_id,
         at: sfx.at,
-        gain_db: sfx.gain_db ?? -6
+        gain_db: sfx.volume ?? -6
       });
     }
   }
@@ -121,8 +123,7 @@ export function buildTimeline(scene, alignment, cueChoices) {
       console.warn(`      • ${warning}`);
     }
   }
-  
-  return saveTimeline(scene.scene_id, timeline);
+  return await saveTimeline(scene.scene_id, timeline);
 }
 
 /**

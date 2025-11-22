@@ -43,11 +43,11 @@ export async function mixScene(options) {
 
   const timelineData = extractTimelineData(timeline, cues);
 
-  if (!timelineData.music && !timelineData.ambience && timelineData.sfx.length === 0) {
-    console.log('   ℹ️  No background tracks selected by cues - using dialogue only');
-    fs.copyFileSync(dialoguePath, output);
-    return;
-  }
+  // if (!timelineData.music && !timelineData.ambience && timelineData.sfx.length === 0) {
+  //   console.log('   ℹ️  No background tracks selected by cues - using dialogue only');
+  //   fs.copyFileSync(dialoguePath, output);
+  //   return;
+  // }
 
   const inputs = [{ path: dialoguePath, label: 'dialogue', index: 0 }];
   let inputIndex = 1;
@@ -76,7 +76,7 @@ export async function mixScene(options) {
     }
   }
 
-  for (const sfx of timelineData.sfx) {
+  for (let sfx of timelineData.sfx) {
     const trackPath = getTrackPath(sfx.cue_id);
     if (trackPath) {
       inputs.push({ path: trackPath, label: `sfx${sfx.index}`, index: inputIndex, data: sfx });
@@ -87,7 +87,7 @@ export async function mixScene(options) {
     }
   }
 
-  if (inputs.length === 1) {
+  if (inputs.length === 0) {
     console.log('   ℹ️  All background tracks missing - using dialogue only');
     fs.copyFileSync(dialoguePath, output);
     return;
@@ -172,7 +172,7 @@ function extractTimelineData(timeline, cues) {
   data.sfx = sfxEvents.map((event, index) => ({
     cue_id: event.cue_id,
     at: event.at || 0,
-    gain_db: event.gain_db || -6,
+    gain_db:  event.gain_db || -6,
     index
   }));
 

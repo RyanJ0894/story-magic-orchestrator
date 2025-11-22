@@ -12,33 +12,60 @@ import { withRetry } from '../lib/retry.js';
  * @param {string} expectedText - Expected text for validation
  * @returns {Array} Array of word objects with {word, start, end}
  */
+
+// Start here
+// workers/whisper-align.js
+
 export async function whisperAlign(audioPath, expectedText) {
   console.log(`   🎙️  Running Whisper ASR for word-level alignment...`);
   
-  // Try whisper.cpp if available
   const whisperCppPath = process.env.WHISPER_CPP_PATH || 'whisper';
   const modelPath = process.env.WHISPER_MODEL_PATH || 'models/ggml-base.en.bin';
-  
+
+  // 1. Create a specific path for the JSON output file
+  // We strip the extension from the audio path to create a base name
+  const outputBase = audioPath.replace(/\.[^/.]+$/, ""); 
+  const jsonOutputPath = `${outputBase}.json`;
+
   try {
-    // Check if whisper.cpp is available
-    await execa('which', ['whisper'], { reject: true });
-    
-    // Run whisper.cpp with word timestamps
-    const { stdout } = await execa(whisperCppPath, [
+    if (whisperCppPath !== 'whisper' && !fs.existsSync(whisperCppPath)) {
+        throw new Error(`Local whisper binary not found at: ${whisperCppPath}`);
+    }
+
+    // 2. Run whisper.cpp
+    // We add '-of', outputBase to tell it exactly where to save the file
+    await execa(whisperCppPath, [
       '-m', modelPath,
       '-f', audioPath,
-      '-ojf',  // Output JSON format
-      '-ml', '1',  // Max line length = 1 word per line
-      '-otxt', // Output text format
+      '-ojf',       // Create JSON file
+      '-of', outputBase, // Specify output filename (whisper adds extensions automatically)
+      '-ml', '1',   // Max line length
     ]);
     
-    // Parse whisper.cpp output
-    const words = parseWhisperCppOutput(stdout, expectedText);
+    // 3. Check if JSON file was created
+    if (!fs.existsSync(jsonOutputPath)) {
+        throw new Error(`Whisper finished but JSON file is missing at: ${jsonOutputPath}`);
+    }
+
+    // 4. Read the JSON file from disk
+    const jsonContent = fs.readFileSync(jsonOutputPath, 'utf8');
+
+    // 5. Parse the content
+    const words = parseWhisperCppOutput(jsonContent, expectedText);
+    
+    // 6. CLEANUP: Delete the generated .json file to keep folder clean
+    try {
+        fs.unlinkSync(jsonOutputPath);
+    } catch (e) {
+        console.warn("Warning: Could not delete temp JSON file:", e.message);
+    }
+
     console.log(`   ✅ Whisper aligned ${words.length} words`);
     return words;
     
   } catch (err) {
-    console.warn(`   ⚠️  whisper.cpp not available, trying OpenAI Whisper API...`);
+    console.warn(`   ⚠️  whisper.cpp failed, trying OpenAI Whisper API...`);
+    console.log(`   ❌ Error details: ${err.message}`);
     
     // Fallback to OpenAI Whisper API
     if (process.env.OPENAI_API_KEY) {
@@ -50,28 +77,67 @@ export async function whisperAlign(audioPath, expectedText) {
   }
 }
 
-/**
- * Parse whisper.cpp JSON output
- */
-function parseWhisperCppOutput(stdout, expectedText) {
+// Keep your existing parseWhisperCppOutput function exactly as it is
+function parseWhisperCppOutput(jsonString, expectedText) {
   const words = [];
   
   try {
-    const data = JSON.parse(stdout);
+    const data = JSON.parse(jsonString);
     
-    if (data.transcription && Array.isArray(data.transcription)) {
-      for (const segment of data.transcription) {
-        if (segment.timestamps) {
+    // valid check
+    if (!data.transcription || !Array.isArray(data.transcription)) {
+        console.warn("   ⚠️  JSON format unexpected: 'transcription' array missing");
+        console.log("   🔍 JSON Preview:", jsonString.substring(0, 200));
+        return [];
+    }
+
+    // DEBUG: Log the first segment to understand the structure
+
+
+    for (const segment of data.transcription) {
+      // STRATEGY A: The segment IS the word (Common with -ml 1)
+      // We look for 'offsets' (ms integers) or 'timestamps' (objects)
+      let start = null;
+      let end = null;
+      let text = segment.text;
+
+      if (segment.offsets) {
+        // "offsets": { "from": 20, "to": 190 }
+        start = segment.offsets.from / 1000.0;
+        end = segment.offsets.to / 1000.0;
+      } else if (segment.timestamps && segment.timestamps.from) {
+         // "timestamps": { "from": "00:00:00,020", ... }
+         // We'd have to parse string, but usually 'offsets' is there.
+         // Let's skip complex parsing if 'offsets' is missing for now and rely on 'from'/'to' keys if they exist directly
+      } else if (typeof segment.from === 'number' && typeof segment.to === 'number') {
+         // Direct properties (some versions)
+         start = segment.from / 1000.0; // check if it's seconds or ms. usually seconds if float, ms if int.
+         // Actually whisper.cpp JSON often uses 'offsets' for ms.
+      }
+
+      // If we found a valid time range and text
+      if (start !== null && end !== null && text) {
+          words.push({
+              word: text.trim(),
+              start: start,
+              end: end
+          });
+          continue; // We found the word, move to next segment
+      }
+
+      // STRATEGY B: Nested timestamps (The code you had before)
+      // Only run this if segment.timestamps is actually an ARRAY
+      if (segment.timestamps && Array.isArray(segment.timestamps)) {
           for (const ts of segment.timestamps) {
             words.push({
               word: ts.text.trim(),
-              start: ts.from / 1000,  // Convert ms to seconds
+              start: ts.from / 1000,
               end: ts.to / 1000
             });
           }
-        }
       }
     }
+
   } catch (err) {
     console.error('   ❌ Failed to parse whisper.cpp output:', err.message);
   }

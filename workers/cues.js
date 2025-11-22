@@ -16,7 +16,7 @@ export async function pickCues(scene, catalog) {
     }
   }
 
-  if (scene.ambience && scene.ambience.cue_id) {
+  if (scene.ambience && scene.ambience.track_id) {
     const cueId = scene.ambience.cue_id || scene.ambience.track_id;
     console.log(`   🌊 DIAGNOSTIC: Adding ambience cue_id="${cueId}"`);
     ambience.push({ cue_id: cueId });
@@ -38,6 +38,5 @@ export async function pickCues(scene, catalog) {
     ambience_count: ambience.length,
     sfx_count: sfx.length
   });
-
-  return { music, ambience, sfx };
+  return {"music":scene.music, "ambience":scene.ambience, "sfx":scene.sfx };
 }
