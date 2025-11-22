@@ -66,7 +66,7 @@ export async function buildTimeline(scene, alignment, cueChoices) {
       cue_id: cue.track_id,
       at: Math.max(0, first + 2),
       fade: cue.fade_in || 1.5,
-      gain_db: volume || -12,
+      gain_db: cue.volume || -12,
       duck_db: 7  // Ducking amount during dialogue
     });
     
